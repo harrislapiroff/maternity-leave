@@ -1,0 +1,88 @@
+<!doctype html>
+<html>
+
+<head>
+	<title>Learning D3</title>
+
+	<style>
+		body {
+			font-family: Helvetica;
+			color: #777;
+		}
+		strong {
+			color: #000
+		}
+		.bar:hover {
+			fill: #F00;
+		}
+		.chart {
+			margin-bottom: 20px;
+		}
+	</style>
+</head>
+
+<body>
+	<svg class="chart"></svg>
+	<div class="details">
+		<div class="company-name"></div>
+		<div class="weeks"><strong>Paid Maternity Leave:</strong> <span class="m-leave-weeks"></span></div>
+	</div>
+	<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.16/d3.min.js"></script>
+	<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.8.3/underscore.js"></script>
+	<script type="text/javascript">
+
+		var t = {
+			'translate': _.template("translate(<%= x %>, <%= y %>)"),
+			'leaveInWeeks': _.template("<% if (!isNaN(n)) { %><%= n %> weeks<% } else { %>Not Available<% } %>")
+		}
+
+		var chart = d3.select(".chart");
+		var detailsEl = d3.select(".details");
+		var companyNameEl = d3.select(".company-name");
+		var maternityLeaveNumberEl = d3.select(".m-leave-weeks");
+
+		detailsEl.style({display: 'none'});
+
+		d3.csv("data.csv", type, function(error, data) {
+			var barHeight = 30;
+			var width = data.length;
+			var height = barHeight;
+
+			var maxMaternityLeave = _.max(data, function (d) { return d.maternity_leave ? parseInt(d.maternity_leave) : 0 }).maternity_leave;
+			var companyPositionScale = d3.scale.ordinal().domain(_.pluck(data, 'name')).rangeRoundBands([0, width]);
+			var maternityWeeksColorScale = d3.scale.linear().domain([0, maxMaternityLeave]).range(['#ffbe71','#4ebec9'])
+
+			chart.attr('width', width).attr('height', height);
+
+			chart.selectAll(".bar")
+					.data(data)
+				.enter().append("rect")
+					.classed('bar', true)
+					.attr('x', 0)
+					.attr('y', 0)
+					.attr('transform', function (d) {
+						return t.translate({x: companyPositionScale(d.name), y: 0});
+					})
+					.attr('fill', function (d) {
+						return maternityWeeksColorScale(d.maternity_leave);
+					})
+					.attr('width', companyPositionScale.rangeBand())
+					.attr('height', 30)
+					.on('mouseover', function (d, i) {
+						detailsEl.style({display: 'block'});
+						companyNameEl.html(d.name);
+						maternityLeaveNumberEl.html(t.leaveInWeeks({n: parseInt(d.maternity_leave)}));
+					})
+					.on('mouseout', function (d, i) {
+						detailsEl.style({display: 'none'});
+					});
+		});
+
+		function type(d) {
+			d.value = +d.value; // coerce to number
+			return d;
+		}
+	</script>
+</body>
+
+</html>
